@@ -90,6 +90,7 @@
         background-color: #CCC;
       }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
   </head>
   <body>
     <button id="connect" class="connectdice">
@@ -101,10 +102,16 @@
       <div id="text" class="dicename"></div>
     </div>
     <div class="blockdetail">
-      <label>
+      <!-- <label>
         <span>Macro</span>
         <textarea id="formula" class="macro" placeholder="Roll20 macro"></textarea>
         <p>Keywords: #pixel_name and #face_value</p>
+      </label> -->
+      <label>
+        <span>Message Type</span>
+        <select id="messageType">
+          <!-- Options will be populated dynamically -->
+        </select>
       </label>
       <button id="save" class="connectdice">
         <span>&#128190;</span>

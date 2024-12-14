@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Edge",
+            "url": "https://www.roll20.com",
+            // Here it is!
+            "runtimeArgs": ["--load-extension=${workspaceFolder}"]
+        },
+        { 
+            // Firefox equivalent
+            "type": "firefox",
+            "request": "launch",
+            "name": "Launch Firefox",
+            "url": "https://example.com/#this-could-be-anything",
+            "addonPath": "${workspaceFolder}"
+        }
+    ]
+}

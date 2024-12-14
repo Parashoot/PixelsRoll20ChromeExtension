@@ -1,4 +1,8 @@
-&{template:default} {{rname=?{Choose a Skill Check}}} {{normal=1}} {{r1=[[#face_value + ?{Choose a Skill Check| 
+---
+roll:
+   name: Skill Check
+   type: roll
+   action: '&{template:default} {{rname=?{Choose a Skill Check}}} {{normal=1}} {{r1=[[#face_value + ?{Choose a Skill Check| 
    Acrobatics,(@{selected|acrobatics_bonus}) [ACROBATICS](#" style="color:Black;font-style:bold)|
    Animal Handling,(@{selected|animal_handling_bonus}) [ANIMAL HANDLING](#" style="color:Black;font-style:bold)|
    Arcana,(@{selected|arcana_bonus}) [ARCANA](#" style="color:Black;font-style:bold)|
@@ -16,4 +20,4 @@
    Religion,(@{selected|religion_bonus}) [RELIGION](#" style="color:Black;font-style:bold)|
    Sleight of Hand,(@{selected|sleight_of_hand_bonus}) [SLEIGHT OF HAND](#" style="color:Black;font-style:bold)|
    Stealth,(@{selected|stealth_bonus}) [STEALTH](#" style="color:Black;font-style:bold) |
-   Survival,(@{selected|survival_bonus}) [SURVIVAL](#" style="color:Black;font-style:bold)}]]}}
+   Survival,(@{selected|survival_bonus}) [SURVIVAL](#" style="color:Black;font-style:bold)}]]}}'

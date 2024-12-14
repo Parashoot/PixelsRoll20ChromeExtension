@@ -1,6 +1,6 @@
 {
   "name": "Pixels on Roll20",
-  "version": "0.1",
+  "version": "0.2",
   "description": "Bring the magic of Pixels into Roll20!",
   "permissions": ["activeTab", "declarativeContent", "storage"],
   "background": {

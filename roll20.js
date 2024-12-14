@@ -144,14 +144,9 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             }
             else if (ev == 1) {
                 this._face = face;
-                let txt = this._name + ': face up = ' + (face + 1);
+                let txt = formatMessage(this, face);
                 log(txt);
-
-                pixelsFormula.replaceAll("#face_value", face + 1)
-                    .replaceAll("#pixel_name", this._name)
-                    .split("\\n")
-                    .forEach(s => postChatMessage(s));
-
+                txt.split("\\n").forEach(s => postChatMessage(s));
                 sendTextToExtension(txt);
             }
         }
@@ -185,6 +180,17 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             sendTextToExtension(pixels.length + " Pixels connected");
     }
 
+    function formatMessage(pixel, face) {
+        switch (pixelsMessageType) {
+            case 'Skill Check':
+                return `Pixel ${pixel.name} rolled a ${face + 1} for a Skill Check`;
+            // Add more cases as needed
+            default:
+                return pixelsFormula.replaceAll("#face_value", face + 1)
+                                    .replaceAll("#pixel_name", pixel.name);
+        }
+    }
+
     //
     // Initialize
     //
@@ -193,6 +199,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
 
     var pixels = []
     var pixelsFormula = "#face_value";
+    var pixelsMessageType = "default";
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         log("Received message from extension: " + msg.action);
@@ -213,6 +220,10 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             pixels.forEach(pixel => pixel.disconnect());
             pixels = []
             sendStatusToExtension();
+        }
+        else if (msg.action == "setMessageType") {
+            pixelsMessageType = msg.messageType;
+            log("Updated message type: " + pixelsMessageType);
         }
     });
 
