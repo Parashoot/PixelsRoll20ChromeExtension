@@ -46,48 +46,52 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         const options = { filters: [{ services: [PIXELS_SERVICE_UUID] }] };
         log('Requesting Bluetooth Device with ' + JSON.stringify(options));
 
-        const device = await navigator.bluetooth.requestDevice(options);
-        log('User selected Pixel "' + device.name + '", connected=' + device.gatt.connected);
+        try {
+            const device = await navigator.bluetooth.requestDevice(options);
+            log('User selected Pixel "' + device.name + '", connected=' + device.gatt.connected);
 
-        let server, notify;
-        const connect = async () => {
-            console.log('Connecting to ' + device.name)
-            server = await device.gatt.connect();
-            const service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
-            notify = await service.getCharacteristic(PIXELS_NOTIFY_CHARACTERISTIC);
-            //const write = await service.getCharacteristic(PIXELS_WRITE_CHARACTERISTIC);
-        }
+            let server, notify;
+            const connect = async () => {
+                console.log('Connecting to ' + device.name);
+                server = await device.gatt.connect();
+                const service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
+                notify = await service.getCharacteristic(PIXELS_NOTIFY_CHARACTERISTIC);
+                //const write = await service.getCharacteristic(PIXELS_WRITE_CHARACTERISTIC);
+            };
 
-        // Attempt to connect up to 3 times
-        const maxAttempts = 3;
-        for (let i = maxAttempts - 1; i >= 0; --i) {
-            try {
-                await connect();
-                break;
-            } catch (error) {
-                log('Error connecting to Pixel: ' + error);
-                // Wait a bit before trying again
-                if (i) {
-                    const delay = 2;
-                    log('Trying again in ' + delay + ' seconds...');
-                    await new Promise((resolve) => setTimeout(() => resolve(), delay * 1000));
+            // Attempt to connect up to 3 times
+            const maxAttempts = 3;
+            for (let i = maxAttempts - 1; i >= 0; --i) {
+                try {
+                    await connect();
+                    break;
+                } catch (error) {
+                    log('Error connecting to Pixel: ' + error);
+                    // Wait a bit before trying again
+                    if (i) {
+                        const delay = 2;
+                        log('Trying again in ' + delay + ' seconds...');
+                        await new Promise((resolve) => setTimeout(() => resolve(), delay * 1000));
+                    }
                 }
             }
-        }
 
-        // Subscribe to notify characteristic
-        if (server && notify) {
-            try {
-                const pixel = new Pixel(device.name, server);
-                await notify.startNotifications();
-                log('Pixels notifications started!');
-                notify.addEventListener('characteristicvaluechanged', ev => pixel.handleNotifications(ev));
-                sendTextToExtension('Just connected to ' + pixel.name);
-                pixels.push(pixel);
-            } catch (error) {
-                log('Error connecting to Pixel notifications: ' + error);
-                await delay(1000);
+            // Subscribe to notify characteristic
+            if (server && notify) {
+                try {
+                    const pixel = new Pixel(device.name, server);
+                    await notify.startNotifications();
+                    log('Pixels notifications started!');
+                    notify.addEventListener('characteristicvaluechanged', ev => pixel.handleNotifications(ev));
+                    sendTextToExtension('Just connected to ' + pixel.name);
+                    pixels.push(pixel);
+                } catch (error) {
+                    log('Error connecting to Pixel notifications: ' + error);
+                    await delay(1000);
+                }
             }
+        } catch (error) {
+            log('Error requesting Bluetooth device: ' + error);
         }
     }
 
@@ -181,14 +185,9 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     }
 
     function formatMessage(pixel, face) {
-        switch (pixelsMessageType) {
-            case 'Skill Check':
-                return `Pixel ${pixel.name} rolled a ${face + 1} for a Skill Check`;
-            // Add more cases as needed
-            default:
-                return pixelsFormula.replaceAll("#face_value", face + 1)
-                                    .replaceAll("#pixel_name", pixel.name);
-        }
+        const formula = pixelsFormula; // Use the current formula
+        return formula.replaceAll("#face_value", face + 1)
+                      .replaceAll("#pixel_name", pixel.name);
     }
 
     //
@@ -199,7 +198,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
 
     var pixels = []
     var pixelsFormula = "#face_value";
-    var pixelsMessageType = "default";
+    var pixelsMessageType = "custom";
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         log("Received message from extension: " + msg.action);
@@ -207,10 +206,8 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             sendStatusToExtension();            
         }
         else if (msg.action == "setFormula") {
-            if (pixelsFormula != msg.formula) {
-                pixelsFormula = msg.formula;
-                log("Updated Roll20 formula: " + pixelsFormula);
-            }
+            pixelsFormula = msg.formula; // Update the formula
+            log("Updated Roll20 formula: " + pixelsFormula);
         }
         else if (msg.action == "connect") {
             connectToPixel();
@@ -218,7 +215,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         else if (msg.action == "disconnect") {
             log("disconnect");
             pixels.forEach(pixel => pixel.disconnect());
-            pixels = []
+            pixels = [];
             sendStatusToExtension();
         }
         else if (msg.action == "setMessageType") {

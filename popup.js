@@ -11,8 +11,7 @@
 // });
 
 function hookButton(name) {
-  document.getElementById(name)
-    .onclick = element => sendMessage({ action: name })
+  $(`#${name}`).click(() => sendMessage({ action: name }));
 }
 
 // Hooks "connect" and "disconnect" buttons to injected JS
@@ -20,7 +19,7 @@ hookButton('connect');
 //hookButton('disconnect');
 
 function showText(txt) {
-  document.getElementById('text').innerHTML = txt;
+  $('#text').html(txt);
 }
 
 function initTextAreaFromStorage(textarea, storageName, dataGetter, defaultValue) {
@@ -30,60 +29,111 @@ function initTextAreaFromStorage(textarea, storageName, dataGetter, defaultValue
       txt = defaultValue;
       saveFormula(txt);
     }
-    textarea.value = txt;
+    $(textarea).val(txt);
   });
 }
 
 function initSelectFromStorage(select, storageName, defaultValue) {
   chrome.storage.sync.get(storageName, data => {
     let value = data[storageName] || defaultValue;
-    select.value = value;
+    $(select).val(value);
   });
 }
 
+function loadTextArea(textarea) {
+  initTextAreaFromStorage(textarea, 'formula', data => data.formula, '#face_value');
+}
+
 // Gets Roll20 formula from storage
-let textareaFormula = document.getElementById('formula');
-initTextAreaFromStorage(
-  textareaFormula, 'formula', data => data.formula,
- "Pixel #pixel_name rolled a #face_value");
+let textareaFormula = $('#formula');
+loadTextArea(textareaFormula);
+
 
 async function fetchRollTypes() {
-  const response = await fetch('rolls/index.json');
-  const rollFiles = await response.json();
-  const rollTypes = [];
+  try {
+    const response = await fetch('rolls/index.json');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const rollFiles = await response.json();
+    const rollTypes = [];
 
-  for (const file of rollFiles) {
-    const response = await fetch(`rolls/${file}`);
-    const text = await response.text();
-    const yaml = jsyaml.load(text);
-    rollTypes.push(yaml.roll.name);
+    for (const file of rollFiles) {
+      const response = await fetch(`rolls/${file}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const json = await response.json();
+      // rollTypes.push(json.roll.name);
+      // Push the roll name as the display and the action as the value
+      rollTypes.push({ display: json.roll.name, value: json.roll.action });
+    }
+
+    return rollTypes;
+  } catch (error) {
+    console.error('Error fetching roll types:', error);
+    return [];
   }
+}
 
-  return rollTypes;
+function saveCustomMessage(name, formula) {
+  chrome.storage.sync.get('customMessages', data => {
+    let customMessages = data.customMessages || [];
+    customMessages.push({ name, formula });
+    chrome.storage.sync.set({ customMessages }, () => console.log('Custom message stored: ' + name));
+  });
 }
 
 async function populateMessageTypeSelect() {
-  const select = document.getElementById('messageType');
+  const select = $('#messageType');
+  const defaultOption = $('<option>', { value: 'custom', text: 'Custom', selected: true });
+  select.append(defaultOption);
+
   const rollTypes = await fetchRollTypes();
-  rollTypes.forEach(type => {
-    const option = document.createElement('option');
-    option.value = type;
-    option.textContent = type;
-    select.appendChild(option);
+  rollTypes.forEach(roll => {
+    const option = $('<option>', { value: roll.value, text: roll.display });
+    select.append(option);
+  });
+
+  chrome.storage.sync.get('customMessages', data => {
+    const customMessages = data.customMessages || [];
+    customMessages.forEach(msg => {
+      const option = $('<option>', { value: msg.formula, text: msg.name });
+      select.append(option);
+    });
   });
 }
 
 // Initialize message type select
 populateMessageTypeSelect().then(() => {
-  let selectMessageType = document.getElementById('messageType');
-  initSelectFromStorage(selectMessageType, 'messageType', 'default');
+  let selectMessageType = $('#messageType');
+  initSelectFromStorage(selectMessageType, 'messageType', 'custom');
+
+  // Add event listener for message type change
+  selectMessageType.change(() => {
+    const selectedOption = selectMessageType.find('option:selected').val();
+    if (selectedOption !== 'custom') {
+      chrome.storage.sync.get('customMessages', data => {
+        const customMessages = data.customMessages || [];
+        const selectedMessage = customMessages.find(msg => msg.formula === selectedOption);
+        textareaFormula.val(selectedOption);
+        sendMessage({ action: "setFormula", formula: selectedOption });
+      });
+    } else {
+      textareaFormula.val('');
+    }
+  });
 });
 
- // Hook button that saves formula edited in popup
-let button = document.getElementById('save');
-button.addEventListener('click', () => {
-  saveFormula(textareaFormula.value);
-  saveMessageType(selectMessageType.value);
+// Hook button that saves formula edited in popup
+let button = $('#save');
+button.click(() => {
+  const formula = textareaFormula.val();
+  const customName = $('#customName').val();
+  if (customName) {
+    saveCustomMessage(customName, formula);
+  }
+  // No need to send the formula here, just save it for later use
 });
 
 // Save formula in storage
@@ -100,6 +150,7 @@ function saveMessageType(type) {
 
 // Send message to injected JS
 function sendMessage(data, responseCallback) {
+  console.log('Sending message to injected JS:', data);
   chrome.tabs.query({ active: true, currentWindow: true }, tabs =>
     chrome.tabs.sendMessage(tabs[0].id, data, responseCallback));
 }
@@ -118,6 +169,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     { file: "roll20.js" },
     _ => {
       sendMessage({ action: "getStatus" });
-      chrome.storage.sync.get('formula', data => sendMessage({ action: "setFormula", formula: data.formula }))
+      // Always send the current formula displayed in the text box
+      sendMessage({ action: "setFormula", formula: textareaFormula.val() });
     })
 });
