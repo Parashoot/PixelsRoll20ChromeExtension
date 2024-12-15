@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <style>
       body {
-        width: 350px;
+        width: 400px;
       }
       button {
         outline: none;
@@ -26,14 +26,17 @@
       }
       .blockdice {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         border: solid 1px #CCC;
         border-radius: 8px;
         padding: 5px 10px;
+        margin-bottom: 5px;
+        cursor: pointer;
       }
-      .dicename {
-        width: calc(100% - 85px);
+      .dicecount {
         font-weight: bold;
+        width: 100%;
       }
       .blockdetail {
         display: block;
@@ -89,40 +92,92 @@
       .connectdice:hover {
         background-color: #CCC;
       }
+      .button-container {
+        display: flex;
+        justify-content: space-between;
+      }
+      .dice {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin: 2px 0;
+        padding: 2px 5px;
+        border: solid 1px #CCC;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .input-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .input-container input {
+        padding: 5px;
+        border: 1px solid #CCC;
+        border-radius: 5px;
+      }
+      .collapsible {
+        cursor: pointer;
+      }
+      .collapsible-content {
+        display: none;
+        width: 100%;
+      }
+      .collapsible-content.show {
+        display: flex;
+        flex-wrap: wrap;
+      }
     </style>
     <!-- Add jQuery library -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   </head>
   <body>
-    <button id="connect" class="connectdice">
-      <span>&#10133;</span>
-      Connect to Pixel
-    </button>
+    <div class="button-container">
+      <button id="connect" class="connectdice">
+        <span>&#10133;</span>
+        Connect to Pixel
+      </button>
+      <button id="disconnect" class="connectdice">
+        <span>&#10060;</span>
+        Disconnect All
+      </button>
+    </div>
     <p></p>
-    <div class="blockdice">
-      <div id="text" class="dicename"></div>
+    
+    <div id="blockdice" class="blockdice collapsible">
+      <div id="diceCount" class="dicecount"></div>
+      <div id="diceList" class="collapsible-content show">No dice connected</div>
     </div>
     <div class="blockdetail">
+      <div class="input-container">
+        <label>
+          <span>Message Type</span>
+          <!-- set custom as the default value -->
+          <select id="messageType">
+            <!-- Options will be populated dynamically -->
+          </select>
+        </label>
+      </div>
       <label>
-        <span>Message Type</span>
-        <!-- set custom as the default value -->
-        <select id="messageType"> 
-          <!-- Options will be populated dynamically -->
-        </select>
+        <input type="text" id="customName" placeholder="New Msg Name">
+      </label>
+      <label>
+        <input type="checkbox" id="advDisadvantage"> Adv / Dis
+      </label>
+      <label>
+        <input type="checkbox" id="sumRolls"> Sum Rolls
       </label>
       <label>
         <textarea id="formula" class="macro" placeholder="Roll20 macro"></textarea>
         <p>Keywords: #pixel_name and #face_value</p>
-      </label>
-      <label>
-        <input type="text" id="customName" placeholder="Custom message name">
       </label>
       <button id="save" class="connectdice">
         <span>&#128190;</span>
         Save
       </button>
     </div>
-    <!-- <button id="disconnect">Disconnect</button> -->
     <script src="popup.js"></script>
   </body>
 </html>

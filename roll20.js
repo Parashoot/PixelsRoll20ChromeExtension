@@ -50,6 +50,12 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             const device = await navigator.bluetooth.requestDevice(options);
             log('User selected Pixel "' + device.name + '", connected=' + device.gatt.connected);
 
+            // Check if the device is already connected
+            if (pixels.some(pixel => pixel.name === device.name)) {
+                log('Pixel "' + device.name + '" is already connected.');
+                return;
+            }
+
             let server, notify;
             const connect = async () => {
                 console.log('Connecting to ' + device.name);
@@ -83,8 +89,8 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
                     await notify.startNotifications();
                     log('Pixels notifications started!');
                     notify.addEventListener('characteristicvaluechanged', ev => pixel.handleNotifications(ev));
-                    sendTextToExtension('Just connected to ' + pixel.name);
                     pixels.push(pixel);
+                    sendDiceToExtension();
                 } catch (error) {
                     log('Error connecting to Pixel notifications: ' + error);
                     await delay(1000);
@@ -148,10 +154,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             }
             else if (ev == 1) {
                 this._face = face;
-                let txt = formatMessage(this, face);
-                log(txt);
-                txt.split("\\n").forEach(s => postChatMessage(s));
-                sendTextToExtension(txt);
+                handleDiceRolls();
             }
         }
     
@@ -163,25 +166,43 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         // }
     }
 
+    let rollInProgress = false;
+
+    function handleDiceRolls() {
+        if (rollInProgress) return;
+        rollInProgress = true;
+
+        if (pixelsAdvDisadvantage && pixelsSumRolls) {
+            handleAdvDisadvantage(pixels);
+        } else if (pixelsSumRolls) {
+            const combinedMessage = formatCombinedMessage(pixels);
+            log(combinedMessage);
+            combinedMessage.split("\\n").forEach(s => postChatMessage(s));
+            // sendTextToExtension(combinedMessage);
+        } else {
+            pixels.forEach(pixel => {
+                const message = formatMessage(pixel, pixel.lastFaceUp);
+                log(message);
+                message.split("\\n").forEach(s => postChatMessage(s));
+                // sendTextToExtension(message);
+            });
+        }
+
+        rollInProgress = false;
+    }
+
     //
     // Communicate with extension
     //
+
+
 
     function sendMessageToExtension(data) {
         chrome.runtime.sendMessage(data);
     }
 
-    function sendTextToExtension(txt) {
-        sendMessageToExtension({ action: "showText", text: txt });
-    }
-
-    function sendStatusToExtension() {
-        if (pixels.length == 0)
-            sendTextToExtension("No Pixel connected");
-        else if (pixels.length == 1)
-            sendTextToExtension("1 Pixel connected");
-        else
-            sendTextToExtension(pixels.length + " Pixels connected");
+    function sendDiceToExtension() {
+        sendMessageToExtension({ action: "showDice", dice: pixels.map(pixel => ({ name: pixel.name })) });
     }
 
     function formatMessage(pixel, face) {
@@ -190,39 +211,70 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
                       .replaceAll("#pixel_name", pixel.name);
     }
 
-    //
-    // Initialize
-    //
+    function formatCombinedMessage(pixels) {
+        const totalFaceValue = pixels.reduce((sum, pixel) => sum + (pixel.lastFaceUp + 1), 0);
+        const names = pixels.map(pixel => pixel.name).join(", ");
+        const formula = pixelsFormula; // Use the current formula
+        return formula.replaceAll("#face_value", totalFaceValue)
+                      .replaceAll("#pixel_name", names);
+    }
+
+    async function handleAdvDisadvantage() {
+        // const firstRoll = formatCombinedMessage(pixels);
+        // log(firstRoll);
+        // firstRoll.split("\\n").forEach(s => postChatMessage(s));
+        // sendTextToExtension(firstRoll);
+
+        // // Wait for user to roll again
+        // await new Promise(resolve => setTimeout(resolve, 5000)); // Adjust the delay as needed
+
+        // const secondRoll = formatCombinedMessage(pixels);
+        // log(secondRoll);
+        // secondRoll.split("\\n").forEach(s => postChatMessage(s));
+        // sendTextToExtension(secondRoll);
+    }
+    
 
     log("Starting Pixels Roll20 extension");
 
     var pixels = []
-    var pixelsFormula = "#face_value";
+    var pixelsFormula = "";
     var pixelsMessageType = "custom";
+    var pixelsAdvDisadvantage = false;
+    var pixelsSumRolls = false;
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         log("Received message from extension: " + msg.action);
         if (msg.action == "getStatus") {
-            sendStatusToExtension();            
+            sendDiceToExtension();          
         }
         else if (msg.action == "setFormula") {
             pixelsFormula = msg.formula; // Update the formula
-            log("Updated Roll20 formula: " + pixelsFormula);
+            pixelsAdvDisadvantage = msg.advDisadvantage;
+            pixelsSumRolls = msg.sumRolls;
+            log("Updated Roll20 formula: " + pixelsFormula + (pixelsAdvDisadvantage ? ", Adv/Disadvantage" : "") + (pixelsSumRolls ? ", Sum Rolls" : ""));
+        }
+        else if (msg.action == "setChecked") {
+            pixelsAdvDisadvantage = msg.advDisadvantage;
+            pixelsSumRolls = msg.sumRolls;
+            log("Updated Roll20 Flags: " + (pixelsAdvDisadvantage ? ", Adv/Disadvantage" : "") + (pixelsSumRolls ? ", Sum Rolls" : ""));
         }
         else if (msg.action == "connect") {
+            log("connect");
             connectToPixel();
+        }
+        else if (msg.action == "disconnectDice") {
+            log("disconnectDice");
+            pixels.find(pixel => pixel.name === msg.name)?.disconnect();
+            pixels = pixels.filter(pixel => pixel.name !== msg.name);
+            sendDiceToExtension();
         }
         else if (msg.action == "disconnect") {
             log("disconnect");
             pixels.forEach(pixel => pixel.disconnect());
             pixels = [];
-            sendStatusToExtension();
-        }
-        else if (msg.action == "setMessageType") {
-            pixelsMessageType = msg.messageType;
-            log("Updated message type: " + pixelsMessageType);
+            sendDiceToExtension();
         }
     });
-
-    sendStatusToExtension();
+    sendDiceToExtension();
 }
