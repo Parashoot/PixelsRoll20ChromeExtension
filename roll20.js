@@ -150,11 +150,13 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             if (!this._hasMoved) {
                 if (ev != 1) {
                     this._hasMoved = true;
+                    
+
                 }
             }
             else if (ev == 1) {
                 this._face = face;
-                handleDiceRolls();
+                handleDiceRollComplete(this._name);
             }
         }
     
@@ -167,10 +169,25 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     }
 
     let rollInProgress = false;
+    let pendingRolls = new Set();
+
+    function addPendingRoll(pixelName) {
+        pendingRolls.add(pixelName);
+    }
 
     function handleDiceRolls() {
         if (rollInProgress) return;
         rollInProgress = true;
+        
+        log(pixelsAdvDisadvantage, pixelsSumRolls);
+        if (pixelsAdvDisadvantage || pixelsSumRolls) {
+            pixels.forEach(pixel => pendingRolls.add(pixel.name));
+        }
+
+        if (pendingRolls.size > 0) {
+            log('Waiting for all dice to roll...');
+            return;
+        }
 
         if (pixelsAdvDisadvantage && pixelsSumRolls) {
             handleAdvDisadvantage(pixels);
@@ -178,24 +195,29 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             const combinedMessage = formatCombinedMessage(pixels);
             log(combinedMessage);
             combinedMessage.split("\\n").forEach(s => postChatMessage(s));
-            // sendTextToExtension(combinedMessage);
         } else {
             pixels.forEach(pixel => {
                 const message = formatMessage(pixel, pixel.lastFaceUp);
                 log(message);
                 message.split("\\n").forEach(s => postChatMessage(s));
-                // sendTextToExtension(message);
             });
         }
 
         rollInProgress = false;
     }
 
+    function handleDiceRollComplete(pixelName) {
+        log(`Dice roll complete for ${pixelName}`);
+        pendingRolls.delete(pixelName);
+        if (pendingRolls.size === 0) {
+            log('All dice rolls complete');
+            handleDiceRolls();
+        }
+    }
+
     //
     // Communicate with extension
     //
-
-
 
     function sendMessageToExtension(data) {
         chrome.runtime.sendMessage(data);
@@ -233,7 +255,6 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         // secondRoll.split("\\n").forEach(s => postChatMessage(s));
         // sendTextToExtension(secondRoll);
     }
-    
 
     log("Starting Pixels Roll20 extension");
 

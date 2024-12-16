@@ -1,14 +1,52 @@
 'use strict';
 
-// var elements = document.getElementsByClassName("blockdice");
-// element.forEach(e => e.onclick = function (element) {
-//   console.log("coucou");
-//   if (element.parent.classList.contains("open")) {
-//     element.parent.classList.remove("open");
-//   } else {
-//     element.parent.classList.add("open");
-//   }
-// });
+class Message {
+  constructor(name, formula, advDisadvantage, sumRolls, source = 'storage') {
+    this.name = name;
+    this.formula = formula;
+    this.advDisadvantage = advDisadvantage;
+    this.sumRolls = sumRolls;
+    this.source = source;
+  }
+
+  static fromJSON(json) {
+    return new Message(json.name, json.formula, json.advDisadvantage, json.sumRolls, 'json');
+  }
+
+  static fromStorage(storage) {
+    return new Message(storage.name, storage.formula, storage.advDisadvantage, storage.sumRolls, 'storage');
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      formula: this.formula,
+      advDisadvantage: this.advDisadvantage,
+      sumRolls: this.sumRolls,
+      source: this.source
+    };
+  }
+
+  toStorage() {
+    return {
+      name: this.name,
+      formula: this.formula,
+      advDisadvantage: this.advDisadvantage,
+      sumRolls: this.sumRolls
+    };
+  }
+
+  toOption() {
+    return $('<option>', {
+      value: toCamelCase(this.name),
+      text: this.name,
+      'data-formula': this.formula,
+      'data-advdisadvantage': this.advDisadvantage,
+      'data-sumrolls': this.sumRolls,
+      'data-source': this.source
+    });
+  }
+}
 
 function hookButton(name) {
   $(`#${name}`).click(() => sendMessage({ action: name }));
@@ -22,8 +60,7 @@ function showDice(dice) {
   if (dice.length === 0) {
     diceContainer.append($('<div>', { class: 'dice' }).text('No dice connected'));
     updateDiceCount(0);
-  } 
-  else {
+  } else {
     dice.forEach(die => {
       const diceElement = $('<div>', { class: 'dice' }).append(
         $('<span>').text(die.name),
@@ -54,32 +91,32 @@ function disconnectDice(name) {
   sendMessage({ action: 'disconnectDice', name });
 }
 
-function initSelectFromStorage(select, storageName, defaultValue) {
+function initSelectFromStorage(storageName, defaultValue) {
   chrome.storage.sync.get(storageName, data => {
     let value = data[storageName] || defaultValue;
-    $(select).val(value);
+    selectMessageType.val(value);
   });
 }
 
-async function fetchRollTypes() {
+async function fetchJSONMessageTypes() {
   try {
-    const response = await fetch('rolls/index.json');
+    const response = await fetch('messageTypes/index.json');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const rollFiles = await response.json();
-    const rollTypes = [];
+    const jsonMessageTypes = [];
 
     for (const file of rollFiles) {
-      const response = await fetch(`rolls/${file}`);
+      const response = await fetch(`messageTypes/${file}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const json = await response.json();
-      rollTypes.push({ display: json.roll.name, value: json.roll.formula });
+      jsonMessageTypes.push(Message.fromJSON(json.message));
     }
-
-    return rollTypes;
+    console.log('Roll types:', jsonMessageTypes);
+    return jsonMessageTypes;
   } catch (error) {
     console.error('Error fetching roll types:', error);
     return [];
@@ -93,16 +130,24 @@ function toCamelCase(str) {
 }
 
 function saveCustomMessage(name, formula, advDisadvantage, sumRolls) {
+  if (jsonMessageTypes.find(message => message.name === name)) {
+    alert('A pre-defined message with this name already exists. Please choose a different name to store as a custom message.');
+    return -1;
+  } 
   chrome.storage.sync.get('customMessages', data => {
     let customMessages = data.customMessages || [];
     const existingMessageIndex = customMessages.findIndex(msg => msg.name === name);
+    
     if (existingMessageIndex !== -1) {
-      customMessages[existingMessageIndex] = { name, formula, advDisadvantage, sumRolls };
+      if (confirm('A custom message with this name already exists. Do you want to overwrite it?')) {
+        customMessages[existingMessageIndex] = new Message(name, formula, advDisadvantage, sumRolls, 'storage').toStorage();
+      }
     } else {
-      customMessages.push({ name, formula, advDisadvantage, sumRolls });
+      customMessages.push(new Message(name, formula, advDisadvantage, sumRolls, 'storage').toStorage());
     }
     chrome.storage.sync.set({ customMessages }, () => console.log('Custom message stored: ' + name));
   });
+  return;
 }
 
 function saveFormulaToStorage(formula) {
@@ -114,83 +159,82 @@ function saveEdits(name, formula, advDisadvantage, sumRolls) {
     let customMessages = data.customMessages || [];
     const index = customMessages.findIndex(msg => msg.name === name);
     if (index !== -1) {
-      customMessages[index] = { name, formula, advDisadvantage, sumRolls };
+      customMessages[index] = new Message(name, formula, advDisadvantage, sumRolls, 'storage').toStorage();
       chrome.storage.sync.set({ customMessages }, () => console.log('Custom message updated: ' + name));
     }
   });
 }
 
 async function populateMessageTypeSelect() {
-  const select = $('#messageType');
-  const rollTypes = await fetchRollTypes();
-  rollTypes.forEach(roll => {
-    const option = $('<option>', { value: toCamelCase(roll.display), text: roll.display, 'data-formula': roll.value, 'data-advDisadvantage': false, 'data-sumRolls': false });
-    select.append(option);
+  jsonMessageTypes = await fetchJSONMessageTypes();
+  jsonMessageTypes.forEach(roll => {
+    selectMessageType.append(roll.toOption());
   });
 
   chrome.storage.sync.get('customMessages', data => {
     const customMessages = data.customMessages || [];
     customMessages.forEach(msg => {
-      const option = $('<option>', { value: toCamelCase(msg.name), text: msg.name, 'data-formula': msg.formula, 'data-advDisadvantage': msg.advDisadvantage, 'data-sumRolls': msg.sumRolls });
-      select.append(option);
+      const message = Message.fromStorage(msg);
+      selectMessageType.append(message.toOption());
     });
 
     if (data.customObject) {
-      const customOption = $('<option>', { value: 'custom', text: 'Custom', 'data-formula': data.customObject.formula, 'data-advDisadvantage': data.customObject.advDisadvantage, 'data-sumRolls': data.customObject.sumRolls });
-      select.append(customOption);
+      const customOption = new Message('Custom', data.customObject.formula, data.customObject.advDisadvantage, data.customObject.sumRolls, 'storage').toOption();
+      selectMessageType.append(customOption);
       textareaFormula.val(data.customObject.formula);
-      $('#advDisadvantage').prop('checked', data.customObject.advDisadvantage);
-      $('#sumRolls').prop('checked', data.customObject.sumRolls);
+      checkboxAdvDisadvantage.prop('checked', data.customObject.advDisadvantage);
+      checkboxSumRolls.prop('checked', data.customObject.sumRolls);
     } else {
-      const customOption = $('<option>', { value: 'custom', text: 'Custom', 'data-formula': '', 'data-advDisadvantage': false, 'data-sumRolls': false });
-      select.append(customOption);
+      const customOption = new Message('Custom', '', false, false, 'storage').toOption();
+      selectMessageType.append(customOption);
     }
   });
 }
 
+function revertToCustom() {
+  let selectedOption = selectMessageType.find('option:selected');
+  if (selectMessageType.val() !== 'custom') {
+    textAreaCustomName.val(selectedOption.text());
+    selectMessageType.val('custom');
+    selectedOption = selectMessageType.find('option:selected');
+    updateOption(selectedOption, textareaFormula.val(), checkboxAdvDisadvantage.is(':checked'), checkboxSumRolls.is(':checked'));
+    selectMessageType.change();
+  }
+}
+
+function updateOption(option, formula, advDisadvantage, sumRolls) {
+  option.data('formula', formula);
+  option.data('advdisadvantage', advDisadvantage);
+  option.data('sumrolls', sumRolls);
+}
+
 // Initialize message type select
 populateMessageTypeSelect().then(() => {
-  let selectMessageType = $('#messageType');
-  initSelectFromStorage(selectMessageType, 'messageType', 'custom');
+  initSelectFromStorage('messageType', 'custom');
 
   // Add event listener for message type change
   selectMessageType.change(() => {
     const selectedOption = selectMessageType.find('option:selected');
     const formula = selectedOption.data('formula');
-    const advDisadvantage = selectedOption.data('advDisadvantage');
-    const sumRolls = selectedOption.data('sumRolls');
+    const advDisadvantage = selectedOption.data('advdisadvantage');
+    const sumRolls = selectedOption.data('sumrolls');
+    console.log('Selected option:', selectedOption.text(), formula, advDisadvantage, sumRolls);
     textareaFormula.val(formula);
-    $('#advDisadvantage').prop('checked', advDisadvantage);
-    $('#sumRolls').prop('checked', sumRolls);
-    sendMessage({ action: "setFormula", formula });
-
-    // Enable or disable custom fields based on selection
-    const isCustom = selectedOption.val() === 'custom';
-    $('#customName').prop('disabled', !isCustom);
-    $('#save').prop('disabled', !isCustom);
+    checkboxAdvDisadvantage.prop('checked', advDisadvantage);
+    checkboxSumRolls.prop('checked', sumRolls);
+    sendMessage({ action: "setFormula", formula: formula, advDisadvantage: advDisadvantage, sumRolls: sumRolls });
   });
 
   // When the user starts typing in the formula box change the selected option to custom
   textareaFormula.on('input', () => {
-    const selectedOption = selectMessageType.find('option:selected');
-    if (selectedOption.val() !== 'custom') {
-      selectMessageType.val('custom');
-      $('#customName').val(selectedOption.text());
-      selectMessageType.change();
-    }
+    revertToCustom();
   });
-  
 
   // Save checkbox changes to custom object
-  $('#advDisadvantage, #sumRolls').change((ev) => {
-    const selectedOption = selectMessageType.find('option:selected');
-    if (selectedOption.val() !== 'custom' && ev.) {
-      selectMessageType.val('custom');
-      $('#customName').val(selectedOption.text());
-      selectMessageType.change();
-    }
-    sendMessage({ action: "setChecked", formula: textareaFormula.val(), advDisadvantage: $('#advDisadvantage').is(':checked'), sumRolls: $('#sumRolls').is(':checked') });
+  $('#advDisadvantage, #sumRolls').change(() => {
+    sendMessage({ action: "setChecked", advDisadvantage: checkboxAdvDisadvantage.is(':checked'), sumRolls: checkboxSumRolls.is(':checked') });
   });
+
 });
 
 // Send message to injected JS
@@ -201,48 +245,47 @@ function sendMessage(data, responseCallback) {
 }
 
 // Hooks "connect" and "disconnect" buttons to injected JS
+
+
+// Gets Roll20 formula from storage
+let selectMessageType = $('#messageType');
+let textareaFormula = $('#formula');
+let textAreaCustomName = $('#customName');
+let checkboxAdvDisadvantage = $('#advDisadvantage');
+let checkboxSumRolls = $('#sumRolls');
+let jsonMessageTypes = [];
+
+// Hook button that saves formula edited in popup
 hookButton('connect');
 hookButton('disconnect');
 
-// Gets Roll20 formula from storage
-let textareaFormula = $('#formula');
-
-// Hook button that saves formula edited in popup
 let button = $('#save');
 button.click(() => {
   const formula = textareaFormula.val();
-  const customName = $('#customName').val();
-  const advDisadvantage = $('#advDisadvantage').is(':checked');
-  const sumRolls = $('#sumRolls').is(':checked');
+  const customName = textAreaCustomName.val();
+  const advDisadvantage = checkboxAdvDisadvantage.is(':checked');
+  const sumRolls = checkboxSumRolls.is(':checked');
 
-  const selectedOption = $('#messageType').find('option:selected');
-  if (selectedOption.val() !== 'custom') {
-    saveEdits(selectedOption.text(), formula, advDisadvantage, sumRolls);
-    selectedOption.data('formula', formula);
-    selectedOption.data('advDisadvantage', advDisadvantage);
-    selectedOption.data('sumRolls', sumRolls);
-  } else if (customName && formula) {
-    saveCustomMessage(customName, formula, advDisadvantage, sumRolls);
-    const existingOption = $('#messageType').find(`option:contains(${customName})`);
-    if (existingOption.length) {
-      existingOption.data('formula', formula);
-      existingOption.data('advDisadvantage', advDisadvantage);
-      existingOption.data('sumRolls', sumRolls);
-    } else {
-      const option = $('<option>', { value: toCamelCase(customName), text: customName, 'data-formula': formula, 'data-advDisadvantage': advDisadvantage, 'data-sumRolls': sumRolls });
-      $('#messageType').append(option);
+  if (customName && formula) {
+    if(saveCustomMessage(customName, formula, advDisadvantage, sumRolls) !== -1) {
+      const existingOption = selectMessageType.find(`option:contains(${customName})`);
+      console.log('Existing option:', existingOption);
+
+      if (existingOption.length) {
+        updateOption(existingOption, formula, advDisadvantage, sumRolls);
+      } else {
+        const option = new Message(customName, formula, advDisadvantage, sumRolls, 'storage').toOption();
+        selectMessageType.append(option);
+      }
     }
   }
 
-  sendMessage({ action: "setFormula", formula });
+  sendMessage({ action: "setFormula", formula: formula, advDisadvantage: advDisadvantage, sumRolls: sumRolls });
 });
 
 // Listen on messages from injected JS
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action == "showText") {
-    console.log('Received message from injected JS:', request.text);
-    showText(request.text);
-  } else if (request.action == "showDice") {
+  if (request.action == "showDice") {
     console.log('Received message from injected JS:', request.dice);
     showDice(request.dice);
   }
