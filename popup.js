@@ -64,6 +64,7 @@ function showDice(dice) {
     dice.forEach(die => {
       const diceElement = $('<div>', { class: 'dice' }).append(
         $('<span>').text(die.name),
+        $('<span>').text(`Token: ${die.token}`),
         $('<button>').text('x').click(() => disconnectDice(die.name))
       );
       diceContainer.append(diceElement);
