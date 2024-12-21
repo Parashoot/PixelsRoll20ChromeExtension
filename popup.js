@@ -1,5 +1,7 @@
 'use strict';
 
+import { Pixel, requestPixel, repeatConnect } from "@systemic-games/pixels-web-connect";
+
 class Message {
   constructor(name, formula, advDisadvantage, sumRolls, source = 'storage') {
     this.name = name;
@@ -65,6 +67,7 @@ function showDice(dice) {
       const diceElement = $('<div>', { class: 'dice' }).append(
         $('<span>').text(die.name),
         $('<span>').text(`Token: ${die.token}`),
+        $('<span class="status">').text(die.status),
         $('<button>').text('x').click(() => disconnectDice(die.name))
       );
       diceContainer.append(diceElement);
@@ -246,7 +249,19 @@ function sendMessage(data, responseCallback) {
 }
 
 // Hooks "connect" and "disconnect" buttons to injected JS
+$('#connect').click(async () => {
+  try {
+    const pixel = await requestPixel();
+    await repeatConnect(pixel);
+    sendMessage({ action: "connect", pixel });
+  } catch (error) {
+    console.error('Error connecting to Pixel:', error);
+  }
+});
 
+$('#disconnect').click(() => {
+  sendMessage({ action: "disconnect" });
+});
 
 // Gets Roll20 formula from storage
 let selectMessageType = $('#messageType');
@@ -257,9 +272,6 @@ let checkboxSumRolls = $('#sumRolls');
 let jsonMessageTypes = [];
 
 // Hook button that saves formula edited in popup
-hookButton('connect');
-hookButton('disconnect');
-
 let button = $('#save');
 button.click(() => {
   const formula = textareaFormula.val();

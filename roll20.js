@@ -1,5 +1,7 @@
 'use strict';
 
+import { Pixel, requestPixel, repeatConnect } from "@systemic-games/pixels-web-connect";
+
 if (typeof window.roll20PixelsLoaded == 'undefined') {
     var roll20PixelsLoaded = true;
 
@@ -36,62 +38,22 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     // Pixels bluetooth discovery
     //
 
-    const PIXELS_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase()
-    const PIXELS_NOTIFY_CHARACTERISTIC = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase()
-    const PIXELS_WRITE_CHARACTERISTIC = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase()
-
     async function connectToPixel() {
-        const options = { filters: [{ services: [PIXELS_SERVICE_UUID] }] };
-        log('Requesting Bluetooth Device with ' + JSON.stringify(options));
+        log('Requesting Bluetooth Device');
 
         try {
-            const device = await navigator.bluetooth.requestDevice(options);
-            log('User selected Pixel "' + device.name + '", connected=' + device.gatt.connected);
+            const pixel = await requestPixel();
+            log('User selected Pixel "' + pixel.name + '", connected=' + pixel.isConnected);
 
             // Check if the device is already connected
-            if (pixels.some(pixel => pixel.name === device.name)) {
-                log('Pixel "' + device.name + '" is already connected.');
+            if (pixels.some(p => p.name === pixel.name)) {
+                log('Pixel "' + pixel.name + '" is already connected.');
                 return;
             }
 
-            let server, notify;
-            const connect = async () => {
-                console.log('Connecting to ' + device.name);
-                server = await device.gatt.connect();
-                const service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
-                notify = await service.getCharacteristic(PIXELS_NOTIFY_CHARACTERISTIC);
-            };
-
-            // Attempt to connect up to 3 times
-            const maxAttempts = 3;
-            for (let i = maxAttempts - 1; i >= 0; --i) {
-                try {
-                    await connect();
-                    break;
-                } catch (error) {
-                    log('Error connecting to Pixel: ' + error);
-                    if (i) {
-                        const delay = 2;
-                        log('Trying again in ' + delay + ' seconds...');
-                        await new Promise((resolve) => setTimeout(() => resolve(), delay * 1000));
-                    }
-                }
-            }
-
-            // Subscribe to notify characteristic
-            if (server && notify) {
-                try {
-                    const pixel = new Pixel(device.name, server);
-                    await notify.startNotifications();
-                    log('Pixels notifications started!');
-                    notify.addEventListener('characteristicvaluechanged', ev => pixel.handleNotifications(ev));
-                    pixels.push(pixel);
-                    sendDiceToExtension();
-                } catch (error) {
-                    log('Error connecting to Pixel notifications: ' + error);
-                    await delay(1000);
-                }
-            }
+            await repeatConnect(pixel);
+            pixels.push(pixel);
+            sendDiceToExtension();
         } catch (error) {
             log('Error requesting Bluetooth device: ' + error);
         }
@@ -100,25 +62,24 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     //
     // Holds a bluetooth connection to a pixel dice
     //
-    class Pixel {
-        constructor(name, server) {
-            this._name = name;
-            this._server = server;
+    class PixelWrapper {
+        constructor(pixel) {
+            this._pixel = pixel;
             this._hasMoved = false;
             this._status = 'Ready';
-            this._token = `#${name.replace(/\s+/g, '_').toLowerCase()}`;
+            this._token = `#${pixel.name.replace(/\s+/g, '_').toLowerCase()}`;
         }
 
         get isConnected() {
-            return this._server != null;
+            return this._pixel.isConnected;
         }
 
         get name() {
-            return this._name;
+            return this._pixel.name;
         }
 
         get lastFaceUp() {
-            return this._face;
+            return this._pixel.currentFace;
         }
 
         get token() {
@@ -126,8 +87,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         }
 
         disconnect() {
-            this._server?.disconnect();
-            this._server = null;
+            this._pixel.disconnect();
         }
 
         handleNotifications(event) {
@@ -152,6 +112,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             }
             else if (ev == 1) {
                 this._face = face;
+                handleDiceRollComplete(this._pixel, face);
             }
         }
     }
