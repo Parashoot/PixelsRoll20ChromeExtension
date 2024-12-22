@@ -86,11 +86,11 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
                     log('Pixels notifications started!');
                     notify.addEventListener('characteristicvaluechanged', ev => pixel.handleNotifications(ev));
                     pixels.push(pixel);
-                    sendDiceToExtension();
                 } catch (error) {
                     log('Error connecting to Pixel notifications: ' + error);
                     await delay(1000);
                 }
+                sendDiceToExtension();
             }
         } catch (error) {
             log('Error requesting Bluetooth device: ' + error);
@@ -149,9 +149,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             for (let i = 0; i < value.byteLength; i++) {
                 arr.push('0x' + ('00' + value.getUint8(i).toString(16)).slice(-2));
             }
-    
-            log('Pixel notification: ' + arr.join(' '));
-    
+
             if (value.getUint8(0) == 3) {
                 this._handleFaceEvent(value.getUint8(1), value.getUint8(2))
             }
@@ -162,18 +160,16 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
                 if (ev != 1) {
                     this._hasMoved = true;
                     this._status = "Rolling";
-                    sendDiceDataToExtension(this._name, face + 1, "Rolling");
                 }
-            }
-            else if (ev != 1) {
-                sendDiceDataToExtension(this._name, face + 1, this._status);
             }
             else if (ev == 1) {
                 this._face = face;
                 this._hasMoved = false;
                 this._status = "Rolled";
-                onRoll(this, face, "Rolled");
+                onRoll(this, face+1, "Rolled");
+                return;
             }
+            sendDiceDataToExtension(this.name, face + 1, this.status);
         }
     }
 
@@ -189,7 +185,8 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
 
     function updateRollset() {
         rollset = pixels.filter(pixel => isDiceIncludedInRollset(pixel));
-        updateDiceStatuses();
+        log("Updated Rollset: " + rollset.map(pixel => pixel.name).join(", "));
+        updateDiceStatus();
     }
 
     const onRoll = (pixel, face, state) => {
@@ -199,27 +196,24 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         const index = rollset.indexOf(pixel);
         if (index >= 0) {
             rolls[index] = state === "Rolled" ? face : 0;
-            log(`Got rolled on ${pixel.name} => ${face}`, rolls);
-            const validRollsCount = rollset.filter(pixel => rolls[pixels.indexOf(pixel)]).length;
-            log(`Got rolled on ${pixel.name} => ${face} (${validRollsCount}/${rollset.length})`);
+            const validRollsCount = rollset.filter(pixel => rolls[rollset.indexOf(pixel)]).length;
+            log(`${pixel.name} => ${pixel.status} ${face} (${validRollsCount}/${rollset.length})`);
             allDiceRolled = rollset.length === validRollsCount;
 
-            sendDiceDataToExtension(pixel.name, face + 1, "Rolled");
             if (allDiceRolled) {
                 processRollResults();
             }
             else {
-                updateDiceStatuses();
+                updateDiceStatus();
             }
         } else {
             console.error(`Got rolled on unknown die: ${pixel.name}`);
         }
     };
 
-    function updateDiceStatuses(dice, status) {
-        log( dice, status);
-        (dice ? dice : pixels).forEach(pixel => {
-            if(status){
+    function updateDiceStatus(dice, status) {
+        (dice === undefined ? pixels : dice).forEach(pixel => {
+            if(status === undefined){
                 if (rollset.includes(pixel)) {
                     if (pixel.isRolling()) {
                         pixel.status = "Rolling";
@@ -234,8 +228,8 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
                 else {
                     pixel.status = "Excluded";
                 }
-            }
-            else{
+            }                        
+            else {
                 pixel.status = status;
             }
 
@@ -250,6 +244,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     function processRollResults() {
         if (pixelsAdvDisadvantage && pixelsSumRolls) {
             handleAdvDisadvantage();
+            return;
         } else if (pixelsSumRolls) {
             const combinedMessage = formatCombinedMessage(rollset);
             log(combinedMessage);
@@ -261,13 +256,11 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
                 message.split("\\n").forEach(s => postChatMessage(s));
             });
         } else {
-            pixels.forEach(pixel => {
-                const message = formatMessage(pixel, pixel.lastFaceUp);
-                log(message);
-                message.split("\\n").forEach(s => postChatMessage(s));
-            });
+            const message = formatCombinedMessage(rollset);
+            log(message);
+            message.split("\\n").forEach(s => postChatMessage(s));
         }
-        updateDiceStatuses();
+        updateDiceStatus();
         allDiceRolled = false;
         rolls = [];
     }
@@ -278,11 +271,11 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             advRolls1.push(...rolls);
             allDiceRolled = false;
             rolls = [];
-            updateDiceStatuses(rollset, "Roll Again");
+            updateDiceStatus(rollset, "Roll Again");
         }
         else {
             advRolls2.push(...rolls);
-            updateDiceStatuses();
+            updateDiceStatus();
 
             // Send both results to chat
             const firstMessage = formatCombinedMessageWithRolls(rollset, advRolls1);
@@ -301,13 +294,13 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         
     }
 
-    function formatCombinedMessageWithRolls(pixels, rolls) {
-        const totalFaceValue = rolls.reduce((sum, face) => sum + (face + 1), 0);
-        const names = pixels.map(pixel => pixel.name).join(", ");
+    function formatCombinedMessageWithRolls(dice, rolls) {
+        const totalFaceValue = rolls.reduce((sum, face) => sum + face, 0);
+        const names = dice.map(pixel => pixel.name).join(", ");
         let message = pixelsFormula.replaceAll("#face_value", totalFaceValue)
                              .replaceAll("#pixel_name", names);
-        pixels.forEach((pixel, index) => {
-            message = message.replaceAll(pixel.token, rolls[index] + 1);
+        dice.forEach((pixel, index) => {
+            message = message.replaceAll(pixel.token, rolls[index]);
         });
         return message;
     }
@@ -325,19 +318,19 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
         updateRollset();
     }
 
-    function formatMessage(pixel, face) {
-        return pixelsFormula.replaceAll("#face_value", face + 1)
-                      .replaceAll("#pixel_name", pixel.name)
-                      .replaceAll(pixel.token, face + 1);
+    function formatMessage(dice, face) {
+        return pixelsFormula.replaceAll("#face_value", face)
+                      .replaceAll("#pixel_name", dice.name)
+                      .replaceAll(dice.token, face);
     }
 
-    function formatCombinedMessage(pixels) {
-        const totalFaceValue = pixels.reduce((sum, pixel) => sum + (pixel.lastFaceUp + 1), 0);
-        const names = pixels.map(pixel => pixel.name).join(", ");
+    function formatCombinedMessage(dice) {
+        const totalFaceValue = pixelsSumRolls ? dice.reduce((sum, pixel) => sum + (pixel.lastFaceUp + 1), 0) : dice.map(pixel => pixel.lastFaceUp + 1).join(", ");
+        const names = dice.map(pixel => pixel.name).join(", ");
         let message = pixelsFormula.replaceAll("#face_value", totalFaceValue)
                              .replaceAll("#pixel_name", names);
-        pixels.forEach(pixel => {
-            message = message.replaceAll(pixel.token, pixel.lastFaceUp + 1);
+        dice.forEach((pixel, index) => {
+            message = message.replaceAll(pixel.token, rolls[index]);
         });
         return message;
     }
@@ -345,7 +338,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     log("Starting Pixels Roll20 extension");
 
     var pixels = [];
-    var pixelsFormula = "#face_value";
+    var pixelsFormula = "";
     var pixelsMessageType = "custom";
     var pixelsAdvDisadvantage = false;
     var pixelsSumRolls = false;
@@ -353,15 +346,14 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         log("Received message from extension: " + msg.action);
         if (msg.action == "getStatus") {
-            sendDiceToExtension();          
+            sendDiceToExtension();
         }
         else if (msg.action == "setFormula") {
             pixelsFormula = msg.formula; // Update the formula
             pixelsAdvDisadvantage = msg.advDisadvantage;
             pixelsSumRolls = msg.sumRolls;
             log("Updated Roll20 formula: " + pixelsFormula + (pixelsAdvDisadvantage ? ", Adv/Disadvantage" : "") + (pixelsSumRolls ? ", Sum Rolls" : ""));
-            updateRollset();
-            updateDiceStatuses();
+            sendDiceToExtension();
         }
         else if (msg.action == "setChecked") {
             pixelsAdvDisadvantage = msg.advDisadvantage;
@@ -379,7 +371,7 @@ if (typeof window.roll20PixelsLoaded == 'undefined') {
             sendDiceToExtension();
         }
         else if (msg.action == "disconnect") {
-            log("disconnect");
+            log("Disconnect All");
             pixels.forEach(pixel => pixel.disconnect());
             pixels = [];
             sendDiceToExtension();

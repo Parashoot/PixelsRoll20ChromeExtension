@@ -62,7 +62,7 @@ function showDice(dice) {
     updateDiceCount(0);
   } else {
     dice.forEach(die => {
-      const diceElement = $('<div>', { class: `dice ${die.status.toLowerCase()}`, 'data-name': die.name }).append(
+      const diceElement = $('<div>', { class: `dice ${toCamelCase(die.status)}`, 'data-name': die.name }).append(
         $('<span>').text(die.name),
         $('<span>').text(`Token: ${die.token}`),
         $('<span class="face-value">').text(die.faceValue || 'N/A'),
@@ -307,7 +307,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Received message from injected JS:', request.dice);
     showDice(request.dice);
   } else if (request.action == "updateDiceData") {
-    console.log('Received updateDiceData message from injected JS:', request.dice);
+    console.log('Received updateDiceData message from injected JS:', request);
     updateDice(request.diceName, request.faceValue, request.status);
   }
   // } else if (request.action == "showRollAlert") {
