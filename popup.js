@@ -1,7 +1,5 @@
 'use strict';
 
-import { Pixel, requestPixel, repeatConnect } from "@systemic-games/pixels-web-connect";
-
 class Message {
   constructor(name, formula, advDisadvantage, sumRolls, source = 'storage') {
     this.name = name;
@@ -64,10 +62,11 @@ function showDice(dice) {
     updateDiceCount(0);
   } else {
     dice.forEach(die => {
-      const diceElement = $('<div>', { class: 'dice' }).append(
+      const diceElement = $('<div>', { class: `dice ${die.status.toLowerCase()}`, 'data-name': die.name }).append(
         $('<span>').text(die.name),
         $('<span>').text(`Token: ${die.token}`),
-        $('<span class="status">').text(die.status),
+        $('<span class="face-value">').text(die.faceValue || 'N/A'),
+        $('<span class="status">').text(die.status || 'Pending'),
         $('<button>').text('x').click(() => disconnectDice(die.name))
       );
       diceContainer.append(diceElement);
@@ -77,9 +76,24 @@ function showDice(dice) {
 
   blockDice.addClass('collapsible');
   diceContainer.addClass('collapsible-content');
+  // Make the dice list not clickable except for the disconnect button
+  diceContainer.off('click').on('click', event => {
+    if (!$(event.target).is('button')) {
+      event.stopPropagation();
+    }
+  });
   blockDice.off('click').on('click', () => {
     diceContainer.toggleClass('show');
   });
+}
+
+function updateDice(diceName, faceValue, status) {
+  const diceElement = $(`.dice[data-name="${diceName}"]`);
+  if (diceElement.length) {
+    diceElement.find('.face-value').text(faceValue || 'N/A');
+    diceElement.find('.status').text(status || 'Pending');
+    diceElement.removeClass('excluded needs-roll rolling rolled').addClass(status.toLowerCase());
+  }
 }
 
 function updateDiceCount(count) {
@@ -249,19 +263,7 @@ function sendMessage(data, responseCallback) {
 }
 
 // Hooks "connect" and "disconnect" buttons to injected JS
-$('#connect').click(async () => {
-  try {
-    const pixel = await requestPixel();
-    await repeatConnect(pixel);
-    sendMessage({ action: "connect", pixel });
-  } catch (error) {
-    console.error('Error connecting to Pixel:', error);
-  }
-});
 
-$('#disconnect').click(() => {
-  sendMessage({ action: "disconnect" });
-});
 
 // Gets Roll20 formula from storage
 let selectMessageType = $('#messageType');
@@ -272,6 +274,9 @@ let checkboxSumRolls = $('#sumRolls');
 let jsonMessageTypes = [];
 
 // Hook button that saves formula edited in popup
+hookButton('connect');
+hookButton('disconnect');
+
 let button = $('#save');
 button.click(() => {
   const formula = textareaFormula.val();
@@ -301,7 +306,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action == "showDice") {
     console.log('Received message from injected JS:', request.dice);
     showDice(request.dice);
+  } else if (request.action == "updateDiceData") {
+    console.log('Received updateDiceData message from injected JS:', request.dice);
+    updateDice(request.diceName, request.faceValue, request.status);
   }
+  // } else if (request.action == "showRollAlert") {
+  //   alert(request.message);
+  // }
 });
 
 // Inject code in website
