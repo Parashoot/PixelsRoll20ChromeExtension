@@ -1,49 +1,162 @@
-# Pixels on Roll20
+# Pixels Dice for Roll20
 
-Proof of concept of a Chrome extension that sends Pixels dice roll results
-to the Roll20 chat.
+Connect your physical [Pixels Dice](https://gamewithpixels.com/) to [Roll20.net](https://roll20.net/) and automatically roll them in-game.
 
-| :exclamation: :exclamation: :exclamation: This an experimental project, not an official product. :exclamation: :exclamation: :exclamation: |
-|--------------------------------------------------------------------------------------------------------------------------------------------|
+## Setup
 
-The scope of this extension is very limited and you should expect to encounter
-issues :)
+### Build & Install
+```bash
+npm install        # First time only
+npm run build      # Compiles to dist/
+```
 
-## Foreword
+### Load Extension into Chrome
+1. Open `chrome://extensions/`
+2. Enable "Developer mode" (top right)
+3. Click "Load unpacked"
+4. Select the `dist/` folder
 
-Pixels are full of LEDs, smarts and no larger than regular dice, they can be
-customized to light up when and how you desire.
-Check our [website](https://gamewithpixels.com/) for more information.
+## How It Works
 
-> **Warning**
-> Before jumping into programming please make sure to read our Pixels developer's
-> [guide](https://github.com/GameWithPixels/.github/blob/main/doc/DevelopersGuide.md).
+### Connection Process
+1. Open the extension popup and click **"Connect New Die"**
+2. Browser shows Bluetooth device list
+3. Select your Pixels die and confirm
+4. **⚠️ Leave the connection tab open** — it maintains the Bluetooth link with your die
 
-## How To Install
+### Rolling in Roll20
+1. Open a Roll20 character sheet and **select your character**
+2. You must have **access to the character's sheet** to roll for them
+3. Roll your physical die
+4. The extension automatically sends the result to chat
+5. Some commands like "Heavy Blaster" or "Basic Save" can read character stats and perform complex rolls
 
-1. Download the content of this repository (*).
-2. Open Chrome extension manager.
-3. If you have downloaded this repository as a zip file then unzip it.
-4. Select "Load Unpacked", browse to the folder where you downloaded the extension.
+## Features
 
-## How To Use
+- ✅ Real-time roll detection
+- ✅ Automatic chat integration
+- ✅ Battery monitoring
+- ✅ Custom roll templates
+- ✅ Duplicate and manage commands
+- ✅ Import/export command presets
 
-1. Open a game on Roll20's [website](https://roll20.net/).
-2. Click on the extension icon (it looks like a puzzle piece) on the right side
-   of Chrome's address bar.
-3. Select the "Pixels on Roll20" extension.
-3. Select a Pixels die to connect to.
-4. After a few seconds the die should be connected and your rolls will appear
-   in the chat!
+## Important Notes
 
-You may connect to more than one die a time.
-To edit the roll formula, re-open the extension and change the text of the macro.
+- **Leave connection tab open** — The browser tab used to connect to Bluetooth must stay open for rolls to work
+- **Select character first** — You must select the character in Roll20 before rolling for them
+- **Sheet access required** — Commands that read character stats need you to have access to that character's sheet
+- **Template placeholders** — Use `#face_value` in custom templates to insert the die result (e.g., `/roll [#face_value] + 5`)
 
-If you're having problems, have a look at the DevTools Console by pressing F12
-and selecting the Console tab in the DevTools window.
+## Documentation
 
-Please open a [ticket](
-    https://github.com/GameWithPixels/PixelsRoll20ChromeExtension/issues
-) on GitHub if you're having any issue.
+- **[Setup & Installation](docs/SETUP.md)** — Detailed installation guide
+- **[Architecture](docs/ARCHITECTURE.md)** — How the extension works internally
+- **[Development](docs/DEVELOPMENT.md)** — For developers working on the codebase
+- **[API Reference](docs/PIXELS_API_REFERENCE.md)** — Pixels dice API details
 
-*Note:* Connections are lost upon reloading the page.
+## 🏗️ Project Structure
+
+```
+src/                    # Source code
+├── background.ts       # Service worker (Bluetooth management)
+├── content.ts          # Content script (Roll20 chat integration)
+├── popup.ts            # Popup UI logic
+├── popup.html          # Popup interface
+├── options.ts          # Options page logic
+├── options.html        # Options interface
+├── connect.ts          # Connect page logic
+├── connect.html        # Connect interface
+└── utils.ts            # Utilities
+
+
+dist/                  # Built extension (ready to load)
+webpack.config.js      # Build configuration
+manifest.json          # Extension manifest (MV3)
+```
+
+## 💡 Key Features
+
+### Core MVP Features
+- **Bluetooth Connection**: Connect to Pixels Dice via Web Bluetooth API
+- **Roll Detection**: Listen for roll events from physical dice
+- **Automatic Injection**: Inject `/roll [face]` commands to Roll20 chat
+- **Status Monitoring**: View connected dice, battery level, die type
+- **Custom roll macros/templates**: Define and use custom roll commands with placeholders
+- **Clean UI**: Simple popup interface for dice management
+
+### Not Implemented (Future Phases)
+- **Multiple Dice Support**: Connect and manage multiple dice simultaneously
+- **Dice Name Customization**: Rename connected dice for easier identification and message creation
+- **Advantage/Disadvantage Handling**: Support for rolling with advantage/disadvantage mechanics
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"No Bluetooth Devices Available"**
+- Ensure Bluetooth is enabled on your computer
+- Make sure Pixels die is powered on
+- Die should be within 10 meters
+
+**Roll doesn't appear in chat**
+- Verify you're on a Roll20 game page (app.roll20.net/editor/...)
+- Check DevTools (F12) for `[Pixels Roll20]` error messages
+- Make sure your character is selected when targetting attributes
+- Try refreshing the page
+
+**Extension won't load**
+- Run `npm run build` to compile
+- Go to `chrome://extensions/`
+- Click refresh icon on the extension
+
+## 📋 Requirements
+
+- Chrome/Chromium browser
+- Node.js and npm (for building)
+- Bluetooth-enabled computer
+- Pixels dice
+
+## 🤝 Contributing
+
+This is an MVP in active development. 
+
+**To contribute:**
+1. Review [DEVELOPMENT.md](DEVELOPMENT.md)
+2. Check [ARCHITECTURE.md](ARCHITECTURE.md) for design
+3. Follow code patterns in existing files
+4. Test thoroughly before submitting
+
+## 📝 Changelog
+
+### Version 2.0.0 - MVP Release (January 2, 2026)
+- ✅ Complete rewrite for Manifest V3
+- ✅ Clean service worker architecture
+- ✅ Improved error handling
+- ✅ Comprehensive documentation
+- ✅ Working Bluetooth + Roll20 integration
+
+## 🔗 Resources
+
+- [Pixels Website](https://gamewithpixels.com/)
+- [Pixels Developer Guide](https://github.com/GameWithPixels/.github/blob/main/doc/DevelopersGuide.md)
+- [Pixels Web Connect API](https://github.com/GameWithPixels/pixels-js)
+- [Chrome Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/)
+- [Roll20 Website](https://roll20.net/)
+
+## ⚠️ Disclaimer
+
+This is an experimental project, not an official product. Use at your own risk.
+
+## 📧 Support
+
+Having issues? Check:
+1. [QUICKSTART.md](QUICKSTART.md) - Troubleshooting section
+2. [CHECKLIST.md](CHECKLIST.md) - Verification checklist
+3. [MVP_STATUS.md](MVP_STATUS.md) - Debugging section
+
+---
+
+**Version**: 2.0.0 MVP  
+**Status**: ✅ Ready for Testing  
+**Last Updated**: January 2, 2026  
+**License**: See LICENSE file

@@ -1,0 +1,8 @@
+{
+  "roll": {
+    "advDisadvantage": false,
+    "formula": "&{template:simple} {{normal=1}} {{r1=[[#face_value + ?{Choose a Saving Throw| \n   Strength,(@{selected|strength_save_bonus}) [STRENGTH SAVE](#\" style=\"color:Black;font-style:bold)|\n   Dexterity,(@{selected|dexterity_save_bonus}) [DEXTERITY SAVE](#\" style=\"color:Black;font-style:bold)|\n   Constitution ,(@{selected|constitution_save_bonus}) [CONSTITUTION  SAVE](#\" style=\"color:Black;font-style:bold)|\n   Wisdom,(@{selected|wisdom_save_bonus}) [WISDOM SAVE](#\" style=\"color:Black;font-style:bold)|\n   Intelligence,(@{selected|intelligence_save_bonus}) [INTELLIGENCE SAVE](#\" style=\"color:Black;font-style:bold)|\n   Charisma,(@{selected|charisma_save_bonus}) [CHARISMA SAVE](#\" style=\"color:Black;font-style:bold)}]]}} {{rname=?{Choose a Saving Throw}}}",
+    "name": "Basic Save",
+    "sumRolls": false
+  }
+}

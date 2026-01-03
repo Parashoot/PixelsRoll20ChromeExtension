@@ -1,0 +1,8 @@
+{
+  "roll": {
+    "advDisadvantage": false,
+    "formula": "&{template:atk} {{mod=+9}} {{rname=[Verpine Shatter Rifle](~-NNGKjlwqMUdKMXK0uuR|repeating_attack_-Ndx84pOyLEr8UzWEfua_attack_dmg)}} {{rnamec=[Verpine Shatter Rifle](~-NNGKjlwqMUdKMXK0uuR|repeating_attack_-Ndx84pOyLEr8UzWEfua_attack_crit)}} {{r1=[[#galaxy_brain + 5[DEX] + 4[PROF]]]}} @{Wen'shi Cabur|rtype}cs>20 + 5[DEX] + 4[PROF]]]}} {{range=150/300}} {{desc=}} {{spelllevel=}} {{innate=}} {{globalattack=@{Wen'shi Cabur|global_attack_mod}}} ammo= @{Wen'shi Cabur|charname_output}",
+    "name": "Verpine",
+    "sumRolls": false
+  }
+}

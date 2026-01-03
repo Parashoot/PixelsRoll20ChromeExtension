@@ -1,0 +1,8 @@
+{
+  "roll": {
+    "advDisadvantage": false,
+    "formula": "&{template:atk} {{mod=+11}} {{rname=[Heavy Blaster +2](~-NNGKjlwqMUdKMXK0uuR|repeating_attack_-Ndx6oM0QsDHdQLrdBwg_attack_dmg)}} {{rnamec=[Heavy Blaster +2](~-NNGKjlwqMUdKMXK0uuR|repeating_attack_-Ndx6oM0QsDHdQLrdBwg_attack_crit)}} {{r1=[[#galaxy_brain + 5[DEX] + 2[MOD] + 4[PROF]]]}} @{Wen'shi Cabur|rtype}cs>20 + 5[DEX] + 2[MOD] + 4[PROF]]]}} {{range=45/160 ft}} {{desc=Power cell (range 45/180), reload 32}} {{spelllevel=}} {{innate=}} {{globalattack=@{Wen'shi Cabur|global_attack_mod}}} ammo= @{Wen'shi Cabur|charname_output}",
+    "name": "Heavy Blaster",
+    "sumRolls": false
+  }
+}

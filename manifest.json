@@ -1,23 +1,37 @@
 {
-  "name": "Pixels on Roll20",
-  "version": "0.2",
-  "description": "Bring the magic of Pixels into Roll20!",
-  "permissions": ["activeTab", "declarativeContent", "storage"],
+  "manifest_version": 3,
+  "name": "Pixels Dice for Roll20",
+  "version": "2.0.0",
+  "description": "Use Pixels Dice with Roll20",
+  "permissions": [
+    "storage",
+    "scripting",
+    "tabs",
+    "bluetooth",
+    "bluetoothPrivate"
+  ],
+  "host_permissions": [
+    "https://app.roll20.net/*"
+  ],
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "page_action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "64": "images/logo-64.png"
+  "content_scripts": [{
+    "matches": ["*://app.roll20.net/editor/*"],
+    "js": ["content.js"]
+  }],
+  "action": {
+    "default_popup": "src/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["messageTypes/*.json"],
+      "matches": ["<all_urls>"]
     }
-  },
+  ],
   "icons": {
     "64": "images/logo-64.png"
   },
-  "options_page": "options.html",
-  "manifest_version": 2,
-  "content_security_policy": "script-src 'self' https://code.jquery.com; object-src 'self'"
-  
+  "options_page": "src/options.html"
 }
