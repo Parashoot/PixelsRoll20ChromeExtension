@@ -22,7 +22,7 @@
     "js": ["content.js"]
   }],
   "action": {
-    "default_popup": "src/popup.html"
+    "default_popup": "popup.html"
   },
   "web_accessible_resources": [
     {
@@ -33,5 +33,5 @@
   "icons": {
     "64": "images/logo-64.png"
   },
-  "options_page": "src/options.html"
+  "options_page": "options.html"
 }
