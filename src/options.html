@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixels Dice - Manage Commands</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .command-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      margin: 8px 0;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+    .command-name {
+      font-weight: bold;
+      color: #333;
+    }
+    button {
+      padding: 8px 12px;
+      margin-left: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+    button.delete {
+      background: #e74c3c;
+      color: white;
+    }
+    button.delete:hover {
+      background: #c0392b;
+    }
+    button.export {
+      background: #4caf50;
+      color: white;
+    }
+    button.export:hover {
+      background: #45a049;
+    }
+    button.clear {
+      background: #95a5a6;
+      color: white;
+      padding: 10px 20px;
+    }
+    button.clear:hover {
+      background: #7f8c8d;
+    }
+    button.import {
+      background: #ff9800;
+      color: white;
+      padding: 10px 20px;
+    }
+    button.import:hover {
+      background: #e68900;
+    }
+    button.duplicate {
+      background: #2196f3;
+      color: white;
+    }
+    button.duplicate:hover {
+      background: #0b7dda;
+    }
+    #importFile {
+      display: none;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.3);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 2px 12px #0002;
+    }
+    .modal-content h3 {
+      margin-top: 0;
+    }
+    .modal-content label {
+      display: block;
+      font-weight: bold;
+      margin: 12px 0 4px 0;
+    }
+    .modal-content input,
+    .modal-content textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      box-sizing: border-box;
+    }
+    .modal-content textarea {
+      height: 100px;
+      resize: vertical;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .modal-buttons button {
+      margin: 0;
+      padding: 8px 16px;
+      flex: 1;
+    }
+    .warning {
+      display: none;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .warning.show {
+      display: block;
+    }
+    .warning-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .warning-buttons button {
+      margin: 0;
+      padding: 8px 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎲 Pixels Dice - Manage Commands</h1>
+  
+  <div class="section">
+    <h2>Custom Commands</h2>
+    <ul id="commandList"></ul>
+  </div>
+  
+  <div class="section">
+    <h2>Tools</h2>
+    <button class="import" id="importBtn">Import Command</button>
+    <button class="clear" id="clearBtn">Clear All Commands</button>
+    <input type="file" id="importFile" accept=".json">
+  </div>
+  
+  <div class="warning" id="clearWarning">
+    <strong>⚠️ Are you sure?</strong>
+    <p>This will delete all custom commands. This cannot be undone.</p>
+    <div class="warning-buttons">
+      <button id="confirmClear" style="background: #e74c3c; color: white;">Yes, Delete All</button>
+      <button id="cancelClear" style="background: #95a5a6; color: white;">Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal" id="duplicateModal">
+    <div class="modal-content">
+      <h3>Duplicate Command</h3>
+      <label for="duplicateName">Command Name:</label>
+      <input id="duplicateName" type="text" maxlength="32" />
+      <label for="duplicateTemplate">Template:</label>
+      <textarea id="duplicateTemplate" readonly></textarea>
+      <div class="modal-buttons">
+        <button id="saveDuplicate" style="background: #4caf50; color: white;">Save</button>
+        <button id="cancelDuplicate" style="background: #95a5a6; color: white;">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="options.js"></script>
+</body>
+</html>
