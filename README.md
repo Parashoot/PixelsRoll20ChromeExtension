@@ -2,19 +2,20 @@
 
 Connect your physical [Pixels Dice](https://gamewithpixels.com/) to [Roll20.net](https://roll20.net/) and automatically roll them in-game.
 
-## Setup
+## Installation
 
-### Build & Install
+### Option 1: Pre-Built (Recommended for Users)
+Download the latest release from [GitHub Releases](https://github.com/yourusername/PixelsRoll20ChromeExtension/releases), extract the ZIP file, and load unpacked into Chrome.
+
+**See:** [GitHub Releases Guide](docs/GITHUB_RELEASES.md) for detailed instructions
+
+### Option 2: Build from Source (For Developers)
 ```bash
 npm install        # First time only
 npm run build      # Compiles to dist/
 ```
 
-### Load Extension into Chrome
-1. Open `chrome://extensions/`
-2. Enable "Developer mode" (top right)
-3. Click "Load unpacked"
-4. Select the `dist/` folder
+Then load the `dist/` folder into Chrome as described above.
 
 ## How It Works
 
@@ -49,10 +50,17 @@ npm run build      # Compiles to dist/
 
 ## Documentation
 
+### Users
+- **[GitHub Releases](docs/GITHUB_RELEASES.md)** — Install pre-built extension
 - **[Setup & Installation](docs/SETUP.md)** — Detailed installation guide
+
+### Developers
 - **[Architecture](docs/ARCHITECTURE.md)** — How the extension works internally
 - **[Development](docs/DEVELOPMENT.md)** — For developers working on the codebase
 - **[API Reference](docs/PIXELS_API_REFERENCE.md)** — Pixels dice API details
+
+### Distribution
+- **[Chrome Web Store](docs/WEBSTORE_SUBMISSION.md)** — Official store submission guide
 
 ## 🏗️ Project Structure
 
